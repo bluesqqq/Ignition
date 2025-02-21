@@ -29,23 +29,29 @@ private:
     // access the processor object that created it.
     IngitionAudioProcessor& audioProcessor;
 
-    juce::Slider driveSlider, toneSlider, mixSlider;
+    // Filter
+    juce::Slider cutoffSlider, resonanceSlider, cutoffModSlider;
 
-    juce::Slider envelopeSlider, envelopeDriveSlider;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> cutoffAttachment, resonanceAttachment, cutoffModAttachment;
 
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> driveAttachment, toneAttachment, mixAttachment;
+    juce::ToggleButton preButton{ "Pre" };
+    juce::ToggleButton postButton{ "Post" };
 
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> envelopeAttachment, envelopeDriveAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> preAttachment, postAttachment;
+
+    // Distortion
+    juce::Slider driveSlider, driveModSlider; // mixSlide;
+
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> driveAttachment, driveModAttachment;
 
     juce::ComboBox distortionTypeSelector;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> distortionTypeAttachment;
 
-    // Pre/Post Toggle Buttons
-    juce::ToggleButton preButton{ "Pre" };
-    juce::ToggleButton postButton{ "Post" };
+    // Other
+    juce::Slider mixSlider;
 
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> preAttachment, postAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(IngitionAudioProcessorEditor)
 };

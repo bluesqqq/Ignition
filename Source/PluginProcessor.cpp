@@ -32,17 +32,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout IngitionAudioProcessor::crea
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("drive", "Drive", 0.01f, 20.0f, 0.0f));
-
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("tone", "Tone", 0.0f, 1.0f, 1.0f));
-
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("envelope", "Envelope", 0.0f, 1.0f, 1.0f));
-
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("envelope drive", "Envelope Drive", 0.0f, 1.0f, 1.0f));
-
-    params.push_back(std::make_unique<juce::AudioParameterChoice>("distortion type", "Distortion Type", juce::StringArray{ "Hard Clip", "Tube", "Fuzz", "Rectify", "Downsample" }, 0));
-
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("cutoff", "Cutoff", 0.0f, 1.0f, 1.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("resonance", "Resonance", 0.0f, 1.0f, 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("cutoff mod", "Cutoff Mod", 0.0f, 1.0f, 0.0f));
     params.push_back(std::make_unique<juce::AudioParameterChoice>("filter routing", "Filter Routing", juce::StringArray{ "Pre", "Post" }, 0));
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("drive", "Drive", 0.01f, 20.0f, 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("drive mod", "Drive Mod", 0.0f, 1.0f, 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterChoice>("distortion type", "Distortion Type", juce::StringArray{ "Hard Clip", "Tube", "Fuzz", "Rectify", "Downsample" }, 0));
 
     params.push_back(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.0f, 1.0f, 1.0f));
 
@@ -125,16 +122,9 @@ void IngitionAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     spec.maximumBlockSize = samplesPerBlock;
     spec.numChannels = getTotalNumInputChannels();
 
-    for (auto& filter : lpf)
-    {
-        filter.prepare(spec);
-        filter.coefficients = juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, 20000.0f, 0.707f);
-        filter.reset();
-    }
-
-    _lpf.reset();
-    _lpf.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
-    _lpf.setCutoffFrequency(20.0f);
+    lpf.reset();
+    lpf.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+    lpf.setCutoffFrequency(20.0f);
 }
 
 void IngitionAudioProcessor::releaseResources()
@@ -193,25 +183,33 @@ void IngitionAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear(i, 0, buffer.getNumSamples());
 
-    int distortionType = apvts.getRawParameterValue("distortion type")->load();
-    float drive = apvts.getRawParameterValue("drive")->load();
-    float tone = apvts.getRawParameterValue("tone")->load();
-    float toneEnvelope = apvts.getRawParameterValue("envelope")->load();
-    float driveEnvelope = apvts.getRawParameterValue("envelope drive")->load();
+    // Filter parameters
+    float pCutoff        = apvts.getRawParameterValue("cutoff")->load();
+    float pResonance     = apvts.getRawParameterValue("resonance")->load();
+    float pCutoffMod     = apvts.getRawParameterValue("cutoff mod")->load();
+    int   pFilterRouting = apvts.getRawParameterValue("filter routing")->load();
 
-    int filterRouting = apvts.getRawParameterValue("filter routing")->load();
+    // Distortion parameters
+    float pDrive          = apvts.getRawParameterValue("drive")->load();
+    float pDriveMod       = apvts.getRawParameterValue("drive mod")->load();
+    int   pDistortionType = apvts.getRawParameterValue("distortion type")->load();
 
-    float mix = apvts.getRawParameterValue("mix")->load();
+    // Other parameters
+    float pMix = apvts.getRawParameterValue("mix")->load();
 
-    float cutoff = juce::jmap(tone, 200.0f, 20000.0f);
+
+    lpf.setResonance(juce::jmap(pResonance, 0.707f, 4.0f));
+
+    const float cutoff = juce::jmap(pCutoff, 200.0f, 20000.0f);
 
     const float maxCutoff = 0.45f * lastSampleRate;
 
     envelopeFollower.setSampleRate(lastSampleRate);
     envelopeFollower2.setSampleRate(lastSampleRate);
 
-    distortion.setDistortionAlgorithm(distortionType);
-    distortion.setDrive(drive);
+    // Set the distortion parameters
+    distortion.setDistortionAlgorithm(pDistortionType);
+    distortion.setDrive(pDrive);
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
@@ -225,31 +223,32 @@ void IngitionAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             float wetSignal = drySignal; // The signal that affects will be applied to
 
             //============// PREPARE FILTER //============//
-            float envelope = envelopeFollower.process(wetSignal); // Update the envelope based on the current sample
+            float envDry = envelopeFollower.process(wetSignal); // Update the envelope based on the current sample
 
-            float modulatedCutoff = std::min(cutoff + (20000.0f * envelope * toneEnvelope), maxCutoff);
+            float modulatedCutoff = std::min(cutoff + (20000.0f * envDry * pCutoffMod), maxCutoff);
 
-            _lpf.setCutoffFrequency(modulatedCutoff);
+            // Set the filter parameters
+            lpf.setCutoffFrequency(modulatedCutoff);
 
             //=======// PRE-DISTORTION FILTERING //=======//
-            if (filterRouting == 0) // "Pre" filter routing
+            if (pFilterRouting == 0) // "Pre" filter routing
             {
-                wetSignal = _lpf.processSample(channel, wetSignal); // Apply filter
+                wetSignal = lpf.processSample(channel, wetSignal); // Apply filter
             }
 
             //==============// DISTORTION //==============//
-            distortion.setModulation(envelope * driveEnvelope); // Set the modulation
+            distortion.setModulation(envDry * pDriveMod); // Set the modulation
 
             wetSignal = distortion.processSample(wetSignal); // Distort signal
 
             //=======// POST-DISTORTION FILTERING //======//
-            if (filterRouting == 1) // "Post" filter routing
+            if (pFilterRouting == 1) // "Post" filter routing
             {
-                wetSignal = _lpf.processSample(channel, wetSignal);// Apply filter
+                wetSignal = lpf.processSample(channel, wetSignal);// Apply filter
             }
 
             //==============// DRY-WET MIX //=============//
-            float mixSignal = juce::jmap(mix, drySignal, wetSignal); // Dry/wet mixed signal
+            float mixSignal = juce::jmap(pMix, drySignal, wetSignal); // Dry-wet mixed signal
 
             channelData[sample] = mixSignal; // Example: Apply simple gain reduction
 

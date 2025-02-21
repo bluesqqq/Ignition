@@ -17,29 +17,21 @@ IngitionAudioProcessorEditor::IngitionAudioProcessorEditor(IngitionAudioProcesso
     // editor's size to whatever you need it to be.
     setSize(400, 500);
 
-    driveSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    driveSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    addAndMakeVisible(driveSlider);
+    // Filter
+    cutoffSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    cutoffSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(cutoffSlider);
+    cutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "cutoff", cutoffSlider);
 
-    driveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "drive", driveSlider);
+    resonanceSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    resonanceSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(resonanceSlider);
+    resonanceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "resonance", resonanceSlider);
 
-    toneSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    toneSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    addAndMakeVisible(toneSlider);
-
-    toneAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "tone", toneSlider);
-
-    envelopeSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    envelopeSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    addAndMakeVisible(envelopeSlider);
-
-    envelopeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "envelope", envelopeSlider);
-
-    envelopeDriveSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    envelopeDriveSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    addAndMakeVisible(envelopeDriveSlider);
-
-    envelopeDriveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "envelope drive", envelopeDriveSlider);
+    cutoffModSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    cutoffModSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(cutoffModSlider);
+    cutoffModAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "cutoff mod", cutoffModSlider);
 
     // Set mutual exclusivity (Only one button can be selected at a time)
     preButton.setRadioGroupId(1);
@@ -60,21 +52,31 @@ IngitionAudioProcessorEditor::IngitionAudioProcessorEditor(IngitionAudioProcesso
     addAndMakeVisible(preButton);
     addAndMakeVisible(postButton);
 
-    mixSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    mixSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    addAndMakeVisible(mixSlider);
 
-    mixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "mix", mixSlider);
+    // Drive
+    driveSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    driveSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(driveSlider);
+    driveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "drive", driveSlider);
 
-    // Distortion Type selector
+    driveModSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    driveModSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(driveModSlider);
+    driveModAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "drive mod", driveModSlider);
+
     distortionTypeSelector.addItem("Hard Clip", 1);
     distortionTypeSelector.addItem("Tube", 2);
     distortionTypeSelector.addItem("Fuzz", 3);
     distortionTypeSelector.addItem("Rectify", 4);
     distortionTypeSelector.addItem("Downsample", 5);
     addAndMakeVisible(distortionTypeSelector);
-
     distortionTypeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(audioProcessor.apvts, "distortion type", distortionTypeSelector);
+
+    // Other
+    mixSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    mixSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(mixSlider);
+    mixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "mix", mixSlider);
 }
 
 IngitionAudioProcessorEditor::~IngitionAudioProcessorEditor()
@@ -173,17 +175,18 @@ void IngitionAudioProcessorEditor::paint(juce::Graphics& g)
 
 void IngitionAudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
-    driveSlider.setBounds(100, 50, 200, 200);
-    toneSlider.setBounds(0, 50, 100, 100);
-    envelopeSlider.setBounds(0, 150, 100, 100);
-    envelopeDriveSlider.setBounds(150, 250, 100, 100);
-
-    mixSlider.setBounds(300, 100, 100, 100);
-
-    distortionTypeSelector.setBounds(150, 350, 100, 40);
-
+    // Filter
+    cutoffSlider.setBounds(0, 50, 100, 100);
+    cutoffModSlider.setBounds(0, 150, 100, 100);
+    resonanceSlider.setBounds(300, 150, 100, 100);
     preButton.setBounds(0, 250, 100, 25);
     postButton.setBounds(0, 275, 100, 25);
+
+    // Distortion
+    driveSlider.setBounds(100, 50, 200, 200);
+    driveModSlider.setBounds(150, 250, 100, 100);
+    distortionTypeSelector.setBounds(150, 350, 100, 40);
+
+    // Other
+    mixSlider.setBounds(300, 50, 100, 100);
 }
