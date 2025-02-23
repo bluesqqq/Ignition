@@ -19,6 +19,10 @@ void EnvelopeFollower::setReleaseTime(float release)
     updateCoefficients();
 }
 
+void EnvelopeFollower::setGate(float g) {
+    gate = g;
+}
+
 void EnvelopeFollower::setSampleRate(float rate)
 {
     sampleRate = rate;
@@ -29,7 +33,7 @@ float EnvelopeFollower::process(float input)
 {
     float absInput = std::abs(input);
 
-    if (absInput > envelope)
+    if (absInput > envelope && absInput > gate)
         envelope = attackCoef * envelope + (1.0f - attackCoef) * absInput;  // Attack phase
     else
         envelope = releaseCoef * envelope + (1.0f - releaseCoef) * absInput; // Release phase
@@ -45,14 +49,16 @@ float EnvelopeFollower::process(float input)
     return envelope;
 }
 
-float EnvelopeFollower::getEnvelope() const
-{
+float EnvelopeFollower::getEnvelope() const {
     return envelope;
 }
 
-std::vector<float>& EnvelopeFollower::getEnvelopeHistory()
-{
+std::vector<float>& EnvelopeFollower::getEnvelopeHistory() {
     return envelopeHistory;
+}
+
+float EnvelopeFollower::getGate() const {
+    return gate;
 }
 
 void EnvelopeFollower::updateCoefficients()

@@ -42,6 +42,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout IngitionAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterChoice>("distortion type", "Distortion Type", juce::StringArray{ "Hard Clip", "Tube", "Fuzz", "Rectify", "Downsample" }, 0));
 
     params.push_back(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.0f, 1.0f, 1.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("gate", "Gate", 0.0f, 1.0f, 1.0f));
 
     return { params.begin(), params.end() };
 }
@@ -197,6 +198,8 @@ void IngitionAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     // Other parameters
     float pMix = apvts.getRawParameterValue("mix")->load();
 
+    // Envelope parameters
+    float pGate = apvts.getRawParameterValue("gate")->load();
 
     lpf.setResonance(juce::jmap(pResonance, 0.707f, 4.0f));
 
@@ -206,6 +209,7 @@ void IngitionAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
     envelopeFollower.setSampleRate(lastSampleRate);
     envelopeFollower2.setSampleRate(lastSampleRate);
+    envelopeFollower.setGate(pGate);
 
     // Set the distortion parameters
     distortion.setDistortionAlgorithm(pDistortionType);

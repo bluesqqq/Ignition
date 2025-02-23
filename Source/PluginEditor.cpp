@@ -15,7 +15,7 @@ IngitionAudioProcessorEditor::IngitionAudioProcessorEditor(IngitionAudioProcesso
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize(400, 500);
+    setSize(400, 600);
 
     // Filter
     cutoffSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
@@ -77,6 +77,13 @@ IngitionAudioProcessorEditor::IngitionAudioProcessorEditor(IngitionAudioProcesso
     mixSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     addAndMakeVisible(mixSlider);
     mixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "mix", mixSlider);
+
+    // Envelope
+    gateSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    gateSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(gateSlider);
+    gateAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "gate", gateSlider);
+
 }
 
 IngitionAudioProcessorEditor::~IngitionAudioProcessorEditor()
@@ -142,7 +149,6 @@ void IngitionAudioProcessorEditor::paint(juce::Graphics& g)
         }
     }
 
-
     // DRAW THE DISTORTION WAVETABLE!!!
     const auto waveshapePoints = audioProcessor.getWaveshape();
 
@@ -189,4 +195,7 @@ void IngitionAudioProcessorEditor::resized()
 
     // Other
     mixSlider.setBounds(300, 50, 100, 100);
+
+    // Envelope
+    gateSlider.setBounds(300, 400, 100, 100);
 }
