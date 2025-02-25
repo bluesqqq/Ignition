@@ -32,17 +32,26 @@ juce::AudioProcessorValueTreeState::ParameterLayout IngitionAudioProcessor::crea
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("cutoff", "Cutoff", 0.0f, 1.0f, 1.0f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("resonance", "Resonance", 0.0f, 1.0f, 0.0f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("cutoff mod", "Cutoff Mod", 0.0f, 1.0f, 0.0f));
-    params.push_back(std::make_unique<juce::AudioParameterChoice>("filter routing", "Filter Routing", juce::StringArray{ "Pre", "Post" }, 0));
+    // Pre Filter
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("pre-filter cutoff",     "Pre-Filter Cutoff",     0.0f, 1.0f, 1.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("pre-filter resonance",  "Pre-Filter Resonance",  0.0f, 1.0f, 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("pre-filter cutoff mod", "Pre-Filter Cutoff Mod", 0.0f, 1.0f, 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterBool>("pre-filter on", "Pre-Filter On", false));
 
+    // Post Filter
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("post-filter cutoff",     "Post-Filter Cutoff",     0.0f, 1.0f, 1.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("post-filter resonance",  "Post-Filter Resonance",  0.0f, 1.0f, 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("post-filter cutoff mod", "Post-Filter Cutoff Mod", 0.0f, 1.0f, 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterBool>("post-filter on", "Post-Filter On", false));
+
+    // Distortion
     params.push_back(std::make_unique<juce::AudioParameterFloat>("drive", "Drive", 0.01f, 20.0f, 0.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>("drive mod", "Drive Mod", 0.0f, 1.0f, 0.0f));
     params.push_back(std::make_unique<juce::AudioParameterChoice>("distortion type", "Distortion Type", juce::StringArray{ "Hard Clip", "Tube", "Fuzz", "Rectify", "Downsample" }, 0));
 
     params.push_back(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.0f, 1.0f, 1.0f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>("gate", "Gate", 0.0f, 1.0f, 1.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("gate", "Gate", 0.0f, 1.0f, 0.0f));
+
 
     return { params.begin(), params.end() };
 }
@@ -123,9 +132,13 @@ void IngitionAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
     spec.maximumBlockSize = samplesPerBlock;
     spec.numChannels = getTotalNumInputChannels();
 
-    lpf.reset();
-    lpf.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
-    lpf.setCutoffFrequency(20.0f);
+    preFilter.reset();
+    preFilter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+    preFilter.setCutoffFrequency(20000.0f);
+
+    postFilter.reset();
+    postFilter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+    postFilter.setCutoffFrequency(20000.0f);
 }
 
 void IngitionAudioProcessor::releaseResources()
@@ -185,10 +198,15 @@ void IngitionAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         buffer.clear(i, 0, buffer.getNumSamples());
 
     // Filter parameters
-    float pCutoff        = apvts.getRawParameterValue("cutoff")->load();
-    float pResonance     = apvts.getRawParameterValue("resonance")->load();
-    float pCutoffMod     = apvts.getRawParameterValue("cutoff mod")->load();
-    int   pFilterRouting = apvts.getRawParameterValue("filter routing")->load();
+    float pPreFilterCutoff    = apvts.getRawParameterValue("pre-filter cutoff")->load();
+    float pPreFilterResonance = apvts.getRawParameterValue("pre-filter resonance")->load();
+    float pPreFilterCutoffMod = apvts.getRawParameterValue("pre-filter cutoff mod")->load();
+    bool pPreFilterOn         = apvts.getRawParameterValue("pre-filter on")->load() > 0.5f;
+
+    float pPostFilterCutoff    = apvts.getRawParameterValue("post-filter cutoff")->load();
+    float pPostFilterResonance = apvts.getRawParameterValue("post-filter resonance")->load();
+    float pPostFilterCutoffMod = apvts.getRawParameterValue("post-filter cutoff mod")->load();
+    bool pPostFilterOn         = apvts.getRawParameterValue("post-filter on");
 
     // Distortion parameters
     float pDrive          = apvts.getRawParameterValue("drive")->load();
@@ -201,9 +219,10 @@ void IngitionAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     // Envelope parameters
     float pGate = apvts.getRawParameterValue("gate")->load();
 
-    lpf.setResonance(juce::jmap(pResonance, 0.707f, 4.0f));
-
-    const float cutoff = juce::jmap(pCutoff, 200.0f, 20000.0f);
+    preFilter.setResonance(juce::jmap(pPreFilterResonance, 0.707f, 4.0f));
+    postFilter.setResonance(juce::jmap(pPostFilterResonance, 0.707f, 4.0f));
+    float preFilterCutoff  = juce::jmap(pPreFilterCutoff, 200.0f, 20000.0f);
+    float postFilterCutoff = juce::jmap(pPostFilterCutoff, 200.0f, 20000.0f);
 
     const float maxCutoff = 0.45f * lastSampleRate;
 
@@ -226,18 +245,15 @@ void IngitionAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
             float wetSignal = drySignal; // The signal that affects will be applied to
 
-            //============// PREPARE FILTER //============//
             float envDry = envelopeFollower.process(wetSignal); // Update the envelope based on the current sample
 
-            float modulatedCutoff = std::min(cutoff + (20000.0f * envDry * pCutoffMod), maxCutoff);
-
-            // Set the filter parameters
-            lpf.setCutoffFrequency(modulatedCutoff);
-
             //=======// PRE-DISTORTION FILTERING //=======//
-            if (pFilterRouting == 0) // "Pre" filter routing
+            if (pPreFilterOn)
             {
-                wetSignal = lpf.processSample(channel, wetSignal); // Apply filter
+                const float modulatedPreFilterCutoff = std::min(preFilterCutoff + (20000.0f * envDry * pPreFilterCutoffMod), maxCutoff);
+                preFilter.setCutoffFrequency(modulatedPreFilterCutoff);
+
+                wetSignal = preFilter.processSample(channel, wetSignal);
             }
 
             //==============// DISTORTION //==============//
@@ -246,9 +262,12 @@ void IngitionAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             wetSignal = distortion.processSample(wetSignal); // Distort signal
 
             //=======// POST-DISTORTION FILTERING //======//
-            if (pFilterRouting == 1) // "Post" filter routing
+            if (pPostFilterOn)
             {
-                wetSignal = lpf.processSample(channel, wetSignal);// Apply filter
+                const float modulatedPostFilterCutoff = std::min(postFilterCutoff + (20000.0f * envDry * pPostFilterCutoffMod), maxCutoff);
+                postFilter.setCutoffFrequency(modulatedPostFilterCutoff);
+
+                wetSignal = postFilter.processSample(channel, wetSignal);
             }
 
             //==============// DRY-WET MIX //=============//

@@ -29,15 +29,23 @@ private:
     // access the processor object that created it.
     IngitionAudioProcessor& audioProcessor;
 
-    // Filter
-    juce::Slider cutoffSlider, resonanceSlider, cutoffModSlider;
+    // Pre Filter
+    juce::Slider preFilterCutoffSlider, preFilterResonanceSlider, preFilterCutoffModSlider;
 
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> cutoffAttachment, resonanceAttachment, cutoffModAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> preFilterCutoffAttachment, preFilterResonanceAttachment, preFilterCutoffModAttachment;
 
-    juce::ToggleButton preButton{ "Pre" };
-    juce::ToggleButton postButton{ "Post" };
+    juce::ToggleButton preFilterOnButton;
 
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> preAttachment, postAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> preFilterOnButtonAttachment;
+
+    // Post Filter
+    juce::Slider postFilterCutoffSlider, postFilterResonanceSlider, postFilterCutoffModSlider;
+
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> postFilterCutoffAttachment, postFilterResonanceAttachment, postFilterCutoffModAttachment;
+
+    juce::ToggleButton postFilterOnButton;
+
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> postFilterOnButtonAttachment;
 
     // Distortion
     juce::Slider driveSlider, driveModSlider; // mixSlide;

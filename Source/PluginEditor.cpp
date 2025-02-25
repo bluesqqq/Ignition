@@ -15,43 +15,46 @@ IngitionAudioProcessorEditor::IngitionAudioProcessorEditor(IngitionAudioProcesso
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize(400, 600);
+    setSize(500, 600);
 
-    // Filter
-    cutoffSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    cutoffSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    addAndMakeVisible(cutoffSlider);
-    cutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "cutoff", cutoffSlider);
+    // Pre Filter
+    preFilterCutoffSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    preFilterCutoffSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(preFilterCutoffSlider);
+    preFilterCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "pre-filter cutoff", preFilterCutoffSlider);
 
-    resonanceSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    resonanceSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    addAndMakeVisible(resonanceSlider);
-    resonanceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "resonance", resonanceSlider);
+    preFilterResonanceSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    preFilterResonanceSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(preFilterResonanceSlider);
+    preFilterResonanceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "pre-filter resonance", preFilterResonanceSlider);
 
-    cutoffModSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    cutoffModSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    addAndMakeVisible(cutoffModSlider);
-    cutoffModAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "cutoff mod", cutoffModSlider);
+    preFilterCutoffModSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    preFilterCutoffModSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(preFilterCutoffModSlider);
+    preFilterCutoffModAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "pre-filter cutoff mod", preFilterCutoffModSlider);
+    
+    addAndMakeVisible(preFilterOnButton);
+    preFilterOnButtonAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(audioProcessor.apvts, "pre-filter on", preFilterOnButton);
 
-    // Set mutual exclusivity (Only one button can be selected at a time)
-    preButton.setRadioGroupId(1);
-    preButton.setButtonText("Pre");
-    postButton.setRadioGroupId(1);
-    postButton.setButtonText("Post");
+    // Post Filter
+    postFilterCutoffSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    postFilterCutoffSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(postFilterCutoffSlider);
+    postFilterCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "post-filter cutoff", postFilterCutoffSlider);
 
-    // Read initial state from AudioProcessorValueTreeState
-    int routing = *audioProcessor.apvts.getRawParameterValue("filter routing");
-    preButton.setToggleState(routing == 0, juce::dontSendNotification);
-    postButton.setToggleState(routing == 1, juce::dontSendNotification);
+    postFilterResonanceSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    postFilterResonanceSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(postFilterResonanceSlider);
+    postFilterResonanceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "post-filter resonance", postFilterResonanceSlider);
 
-    // Button Listeners to update parameter choice
-    preButton.onClick = [this] { audioProcessor.apvts.getParameter("filter routing")->setValueNotifyingHost(0); };
-    postButton.onClick = [this] { audioProcessor.apvts.getParameter("filter routing")->setValueNotifyingHost(1); };
+    postFilterCutoffModSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    postFilterCutoffModSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    addAndMakeVisible(postFilterCutoffModSlider);
+    postFilterCutoffModAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.apvts, "post-filter cutoff mod", postFilterCutoffModSlider);
 
-    // Add buttons to UI
-    addAndMakeVisible(preButton);
-    addAndMakeVisible(postButton);
-
+    addAndMakeVisible(postFilterOnButton);
+    postFilterOnButtonAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(audioProcessor.apvts, "post-filter on", postFilterOnButton);
+    
 
     // Drive
     driveSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
@@ -182,19 +185,23 @@ void IngitionAudioProcessorEditor::paint(juce::Graphics& g)
 void IngitionAudioProcessorEditor::resized()
 {
     // Filter
-    cutoffSlider.setBounds(0, 50, 100, 100);
-    cutoffModSlider.setBounds(0, 150, 100, 100);
-    resonanceSlider.setBounds(300, 150, 100, 100);
-    preButton.setBounds(0, 250, 100, 25);
-    postButton.setBounds(0, 275, 100, 25);
+    preFilterCutoffSlider.setBounds(0, 50, 100, 100);
+    preFilterResonanceSlider.setBounds(0, 150, 100, 100);
+    preFilterCutoffModSlider.setBounds(0, 250, 100, 100);
+    preFilterOnButton.setBounds(25, 0, 50, 50);
+
+    postFilterCutoffSlider.setBounds(400, 50, 100, 100);
+    postFilterResonanceSlider.setBounds(400, 150, 100, 100);
+    postFilterCutoffModSlider.setBounds(400, 250, 100, 100);
+    postFilterOnButton.setBounds(425, 0, 50, 50);
 
     // Distortion
-    driveSlider.setBounds(100, 50, 200, 200);
-    driveModSlider.setBounds(150, 250, 100, 100);
-    distortionTypeSelector.setBounds(150, 350, 100, 40);
+    driveSlider.setBounds(150, 50, 200, 200);
+    driveModSlider.setBounds(200, 250, 100, 100);
+    distortionTypeSelector.setBounds(200, 350, 100, 40);
 
     // Other
-    mixSlider.setBounds(300, 50, 100, 100);
+    mixSlider.setBounds(400, 400, 100, 100);
 
     // Envelope
     gateSlider.setBounds(300, 400, 100, 100);

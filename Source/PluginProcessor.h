@@ -66,7 +66,7 @@ private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     float lastSampleRate;
 
-    dsp::StateVariableTPTFilter<float> lpf;
+    dsp::StateVariableTPTFilter<float> preFilter, postFilter;
 
     DistortionEngine distortion;
 
